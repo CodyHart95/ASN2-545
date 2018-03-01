@@ -1,7 +1,6 @@
 int[] rCounts = new int[256];  //bins for red histogram
 int[] gCounts = new int[256];  //bins for green histogram
 int[] bCounts = new int[256];  //bins for blue histogram
-int[] brightCounts = new int[256];
 int posR = 10, posG = 275, posB = 540, a, b, c, d, hCountTotal;
 String fname[] = {"low_contrast_woman.jpg","IDontKnowWhatThisIs.gif","man_overexposed.jpg"};
 PImage img, sImg, eImg, currentImg; //Original, brightened, darkened, current
@@ -12,7 +11,7 @@ int pixCount = 0;
 void setup() {
   size(400, 400);
   surface.setResizable(true);
-  img = loadImage(fname[2]);
+  img = loadImage(fname[0]);
 
   
   sImg = stretchedHist(img);
@@ -124,7 +123,6 @@ PImage stretchedHist(PImage img) {
     for (int x = 0; x < copyImg.width; x++) {
       color c = copyImg.get(x,y);
       int newRed = int(red(c) - rMin);
-      //println(str(red(c)), str(rMin));
       int newGreen = int(green(c)- gMin);   
       int newBlue = int(blue(c) - bMin);
       copyImg.set(x,y,color(newRed,newGreen,newBlue)); 
@@ -139,27 +137,20 @@ PImage stretchedHist(PImage img) {
    for (int y = 0; y < copyImg.height; y++) {
     for (int x = 0; x < copyImg.width; x++) {
       color c = copyImg.get(x,y);
-      int newRed = constrain(int(red(c) * (255/rMaxVal)),0,255);
-      int newGreen = constrain(int(green(c) * (255/gMaxVal)),0,255);
-      int newBlue = constrain(int(blue(c)* (255/bMaxVal)),0,255);
+      float newRed = red(c) * 255/rMaxVal;
+      float newGreen = green(c) * 255/gMaxVal;
+      float newBlue = blue(c)* 255/bMaxVal;
       copyImg.set(x,y,color(newRed,newGreen,newBlue)); 
-      println(newRed);
     }
   }
   
   return copyImg;
 }
-void calcBrightHist(PImage copyImg){
- for (int y = 0; y < copyImg.height; y++) {
-    for (int x = 0; x < copyImg.width; x++) {
-      color c = copyImg.get(x,y);
-      brightCounts[int(brightness(c))]++;
-    }
- }
-}
+
  PImage equalize(PImage img) {
   PImage copyImg = img.get();
   calcHists(copyImg);
+  int imgSize = copyImg.width * copyImg.height;
   //will alter and return copy that has been equalized
   float[] cumulRed = cumulHist(rCounts, copyImg);
   float[] cumulGreen = cumulHist(gCounts, copyImg);
@@ -169,18 +160,21 @@ void calcBrightHist(PImage copyImg){
   int maxBlue = maxPixleValue(bCounts);
   //println(str(maxRed), str(maxGreen), str(maxBlue));
   for(int i = 0; i < cumulRed.length; i++){
-    cumulRed[i] = round(cumulRed[i] * maxRed);
-    cumulGreen[i] = round(cumulGreen[i] * maxGreen);
-    cumulBlue[i] = round(cumulBlue[i] * maxBlue);
+    cumulRed[i] = round((cumulRed[i]/imgSize) * 255);
+    cumulGreen[i] = round((cumulGreen[i]/imgSize) * 255);
+    cumulBlue[i] = round((cumulBlue[i]/imgSize) * 255);
   }
   
   for (int y = 0; y < copyImg.height; y++) {
     for (int x = 0; x < copyImg.width; x++) {
       color c = copyImg.get(x,y);
-      int newRed = int(cumulRed[int(red(c))]);
-      int newGreen = int(cumulGreen[int(red(c))]);
-      int newBlue = int(cumulBlue[int(red(c))]);
-      copyImg.set(x,y, color(newRed, newGreen, newBlue));
+      int newRed = int(red(c));
+      int newGreen = int(green(c));
+      int newBlue = int(blue(c));
+      //int newRed = int(cumulRed[int(red(c))]);
+      //int newGreen = int(cumulGreen[int(red(c))]);
+      //int newBlue = int(cumulBlue[int(red(c))]);
+      copyImg.set(x,y, color(rCounts[newRed], gCounts[newGreen], bCounts[newBlue]));
     }
   }
   
@@ -189,7 +183,7 @@ void calcBrightHist(PImage copyImg){
 float[] cumulHist(int[] hist, PImage copyImg){
   float[] cumul = new float[256];
   for (int i = 1; i < hist.length; i++){
-    cumul[i] = (hist[i] + cumul[i - 1])/(copyImg.width * copyImg.height);
+    cumul[i] = (hist[i] + cumul[i - 1]);
   }
   return cumul;
 }
