@@ -1,8 +1,21 @@
+/*User Documentation
+
+  Pressing the 1,2,or 3 keys will display the original, stretched, and equalized images respectively.
+  Performing a click and drag on the original image will draw a rectangle and display a stretch of the area
+  inside the rectangle. This must be done from left to right. Drawing the rectangle from left to right
+  will cause the image to need to be reloaded.
+  Pressing the h,s,e,or r keys will display the orginal histogram, streched histogram, equalized histogram
+  and the rectangle stretch histogram respectively 
+  The rectangle stretch histogram will display the histogram of the last known instance of the rectangle 
+  stretch function.
+
+*/
+
 int[] rCounts = new int[256];  //bins for red histogram
 int[] gCounts = new int[256];  //bins for green histogram
 int[] bCounts = new int[256];  //bins for blue histogram
 int posR = 10, posG = 275, posB = 540, startx, starty, endx, endy, hCountTotal, savedSX, savedSY, savedEY, savedEX;
-String fname[] = {"low_contrast_woman.jpg","IDontKnowWhatThisIs.gif","man_overexposed.jpg"};
+String fname = "low_contrast_woman.jpg";
 PImage img, sImg, eImg, currentImg; //Original, brightened, darkened, current
 boolean showHists = false;
 int pixValue = 0;
@@ -11,9 +24,7 @@ int pixCount = 0;
 void setup() {
   size(400, 400);
   surface.setResizable(true);
-  img = loadImage(fname[0]);
-
-  
+  img = loadImage(fname);
   sImg = stretchedHist(img);
   eImg = equalize(img);
   surface.setSize(img.width, img.height);
