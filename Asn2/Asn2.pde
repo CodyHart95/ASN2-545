@@ -248,6 +248,7 @@ void eraseRect(){
 }
 void mousePressed() {
   if(!showHists){
+  currentImg = img;
   startx=mouseX;
   starty=mouseY;
   }
