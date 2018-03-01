@@ -1,7 +1,7 @@
 int[] rCounts = new int[256];  //bins for red histogram
 int[] gCounts = new int[256];  //bins for green histogram
 int[] bCounts = new int[256];  //bins for blue histogram
-int posR = 10, posG = 275, posB = 540, a, b, c, d, hCountTotal;
+int posR = 10, posG = 275, posB = 540, startx, starty, endx, endy, hCountTotal, savedSX, savedSY, savedEY, savedEX;
 String fname[] = {"low_contrast_woman.jpg","IDontKnowWhatThisIs.gif","man_overexposed.jpg"};
 PImage img, sImg, eImg, currentImg; //Original, brightened, darkened, current
 boolean showHists = false;
@@ -47,7 +47,7 @@ void draw() {
   stroke(0);
   strokeWeight(2);
   noFill();
-  rect(a,b,c,d);
+  rect(startx,starty,endx,endy);
 }
 
 
@@ -110,6 +110,42 @@ void printHists() {
     println(i, rCounts[i], gCounts[i], bCounts[i]);
   }
 }
+PImage rectStretch(PImage img){
+ PImage copyImg = img.get();
+  calcHists(copyImg);
+  int rMin = minPixleValue(rCounts);
+  int gMin = minPixleValue(gCounts);
+  int bMin = minPixleValue(bCounts);
+      
+  for (int y = 0; y < copyImg.height; y++) {
+   for (int x = 0; x < copyImg.width; x++) {
+     color c = copyImg.get(x,y);
+     int newRed = int(red(c) - rMin);
+     int newGreen = int(green(c)- gMin);   
+     int newBlue = int(blue(c) - bMin);
+     if(x > savedSX && x < savedEX && y > savedSY && y < savedEY){
+     copyImg.set(x,y,color(newRed,newGreen,newBlue)); 
+     }
+    }
+  }
+  
+  calcHists(copyImg);
+  int rMaxVal = maxPixleValue(rCounts);
+  int gMaxVal = maxPixleValue(gCounts);
+  int bMaxVal = maxPixleValue(bCounts);
+   for (int y = 0; y < copyImg.height; y++) {
+    for (int x = 0; x < copyImg.width; x++) {
+      color c = copyImg.get(x,y);
+      float newRed = red(c) * 255/rMaxVal;
+      float newGreen = green(c) * 255/gMaxVal;
+      float newBlue = blue(c)* 255/bMaxVal;
+      if(x > savedSX && x < savedEX && y > savedSY && y < savedEY){
+      copyImg.set(x,y,color(newRed,newGreen,newBlue)); 
+      }
+    }
+  }
+  return copyImg;
+}
 
 PImage stretchedHist(PImage img) {
   PImage copyImg = img.get(); 
@@ -133,7 +169,6 @@ PImage stretchedHist(PImage img) {
   int rMaxVal = maxPixleValue(rCounts);
   int gMaxVal = maxPixleValue(gCounts);
   int bMaxVal = maxPixleValue(bCounts);
-  println(rMaxVal);
    for (int y = 0; y < copyImg.height; y++) {
     for (int x = 0; x < copyImg.width; x++) {
       color c = copyImg.get(x,y);
@@ -146,41 +181,33 @@ PImage stretchedHist(PImage img) {
   
   return copyImg;
 }
-
- PImage equalize(PImage img) {
+PImage equalize(PImage img) {
   PImage copyImg = img.get();
   calcHists(copyImg);
-  int imgSize = copyImg.width * copyImg.height;
-  //will alter and return copy that has been equalized
-  float[] cumulRed = cumulHist(rCounts, copyImg);
-  float[] cumulGreen = cumulHist(gCounts, copyImg);
-  float[] cumulBlue = cumulHist(bCounts, copyImg);
-  int maxRed = maxPixleValue(rCounts);
-  int maxGreen = maxPixleValue(gCounts);
-  int maxBlue = maxPixleValue(bCounts);
-  //println(str(maxRed), str(maxGreen), str(maxBlue));
-  for(int i = 0; i < cumulRed.length; i++){
-    cumulRed[i] = round((cumulRed[i]/imgSize) * 255);
-    cumulGreen[i] = round((cumulGreen[i]/imgSize) * 255);
-    cumulBlue[i] = round((cumulBlue[i]/imgSize) * 255);
-  }
+  float[] cumulRed = cumulHist(rCounts);
+  float[] cumulGreen = cumulHist(gCounts);
+  float[] cumulBlue = cumulHist(bCounts);
   
-  for (int y = 0; y < copyImg.height; y++) {
-    for (int x = 0; x < copyImg.width; x++) {
-      color c = copyImg.get(x,y);
+  float res = copyImg.width * copyImg.height;
+  cumulRed[0] = rCounts[0];
+  for (int i = 0; i < rCounts.length; i++) {
+    cumulRed[i] = round((cumulRed[i] / res) * 255);
+    cumulGreen[i] = round((cumulGreen[i] / res) * 255);
+    cumulBlue[i] = round((cumulBlue[i] / res) * 255);
+  }
+  for (int x = 0; x < copyImg.width; x++) {
+    for (int y = 0; y < copyImg.height; y++) {
+      color c = copyImg.get(x, y);
       int newRed = int(red(c));
       int newGreen = int(green(c));
       int newBlue = int(blue(c));
-      //int newRed = int(cumulRed[int(red(c))]);
-      //int newGreen = int(cumulGreen[int(red(c))]);
-      //int newBlue = int(cumulBlue[int(red(c))]);
-      copyImg.set(x,y, color(rCounts[newRed], gCounts[newGreen], bCounts[newBlue]));
+      copyImg.set(x, y, color(cumulRed[newRed], cumulGreen[newGreen], cumulBlue[newBlue]));
     }
   }
-  
   return copyImg;
 }
-float[] cumulHist(int[] hist, PImage copyImg){
+
+float[] cumulHist(int[] hist){
   float[] cumul = new float[256];
   for (int i = 1; i < hist.length; i++){
     cumul[i] = (hist[i] + cumul[i - 1]);
@@ -201,24 +228,42 @@ int minPixleValue(int[] hist){
   }
   return 0;
 }
+
+void eraseRect(){
+  startx = 0;
+  starty = 0;
+  endx = 0;
+  endy = 0;
+}
 void mousePressed() {
   if(!showHists){
-  a=mouseX;
-  b=mouseY;
+  startx=mouseX;
+  starty=mouseY;
   }
 }
 
 
 void mouseDragged() {
   if(!showHists){
-  c=mouseX-a;
-  d=mouseY-b;
-  rect(a, b, c, d);
+  endx=mouseX-startx;
+  endy=mouseY-starty;
+  rect(startx, starty, endx, endy);
   }
 }
 
 void mouseReleased() {
   //needs to call the hists to color inside of rectangle
+  endx = mouseX;
+  endy = mouseY;
+  savedSX = startx;
+  savedSY = starty;
+  savedEX = endx;
+  savedEY = endy;
+  
+  if(!showHists && currentImg == img){
+    currentImg = rectStretch(img).get();
+  }
+  eraseRect();
 }
 void keyReleased() {
   background(0);
@@ -230,17 +275,36 @@ void keyReleased() {
     //printHists();
   } else if (key == '2') {
     //display stretched Hist
+    currentImg = sImg;
+    showHists = false;
+    surface.setSize(currentImg.width, currentImg.height);
+    calcHists(currentImg);
   } else if (key == '3') {
     //display equalized hist
+    currentImg = eImg;
+    showHists = false;
+    surface.setSize(currentImg.width, currentImg.height);
+    calcHists(currentImg);
   } else if (key == 'h') {
+    currentImg = img;
     calcHists(currentImg);
     showHists = true;
     surface.setSize(posB + bCounts.length, currentImg.height);
   } else if (key == 's') {
     currentImg = sImg;
     calcHists(currentImg);
+    showHists = true;
+    surface.setSize(posB + bCounts.length, currentImg.height);
   } else if (key == 'e') {
     currentImg = eImg;
     calcHists(currentImg);
+    showHists = true;
+    surface.setSize(posB + bCounts.length, currentImg.height);
+  }
+  else if (key == 'r'){
+    currentImg = rectStretch(img);
+    calcHists(currentImg);
+    showHists = true;
+     surface.setSize(posB + bCounts.length, currentImg.height);
   }
 }
